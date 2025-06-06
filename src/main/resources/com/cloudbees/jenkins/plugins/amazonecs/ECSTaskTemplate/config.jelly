@@ -327,5 +327,11 @@
         </table>
       </f:repeatable>
     </f:entry>
+    <f:entry title="${%Minimum Idle Agents}" field="minIdleAgents">
+      <f:number default="0" />
+    </f:entry>
+    <f:entry title="${%Maintain Schedule}" field="maintainSchedule">
+      <f:textbox />
+    </f:entry>
   </f:advanced>
 </j:jelly>

@@ -413,6 +413,21 @@ public class ECSCloud extends Cloud {
         setTemplates(result);
     }
 
+    public ECSSlave provisionSlaveForTemplate(ECSTaskTemplate template) throws Descriptor.FormException, IOException {
+        String parentLabel = template.getInheritFrom();
+        final ECSTaskTemplate merged = template.merge(getTemplate(parentLabel));
+        String labelName = Optional.ofNullable(template.getLabel()).orElse("ecs");
+        Label label = Label.parse(labelName).iterator().next();
+        String agentName = name + "-" + label.getName() + "-" + RandomStringUtils.random(5, "bcdfghjklmnpqrstvwxz0123456789");
+        ECSSlave slave = new ECSSlave(ECSCloud.this, agentName, merged, new ECSLauncher(ECSCloud.this, tunnel, null));
+        Jenkins.get().addNode(slave);
+        Computer c = slave.toComputer();
+        if (c != null) {
+            c.connect(false);
+        }
+        return slave;
+    }
+
     private class ProvisioningCallback implements Callable<Node> {
 
         private final ECSTaskTemplate template;

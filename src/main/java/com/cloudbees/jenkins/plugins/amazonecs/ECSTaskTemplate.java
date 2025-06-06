@@ -69,6 +69,8 @@ import hudson.util.ListBoxModel;
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
+import hudson.scheduler.CronTabList;
+import antlr.ANTLRException;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
@@ -353,6 +355,17 @@ public class ECSTaskTemplate extends AbstractDescribableImpl<ECSTaskTemplate> im
      */
     private boolean enableExecuteCommand;
 
+    /**
+     * Minimum number of idle agents to keep running for this template.
+     */
+    private int minIdleAgents;
+
+    /**
+     * Cron schedule defining when {@link #minIdleAgents} should be maintained.
+     */
+    @CheckForNull
+    private String maintainSchedule;
+
     @DataBoundConstructor
     public ECSTaskTemplate(String templateName,
                            @Nullable String label,
@@ -517,6 +530,16 @@ public class ECSTaskTemplate extends AbstractDescribableImpl<ECSTaskTemplate> im
     @DataBoundSetter
     public void setDnsSearchDomains(String dnsSearchDomains) {
         this.dnsSearchDomains = StringUtils.trimToNull(dnsSearchDomains);
+    }
+
+    @DataBoundSetter
+    public void setMinIdleAgents(int minIdleAgents) {
+        this.minIdleAgents = Math.max(0, minIdleAgents);
+    }
+
+    @DataBoundSetter
+    public void setMaintainSchedule(String maintainSchedule) {
+        this.maintainSchedule = StringUtils.trimToNull(maintainSchedule);
     }
 
     public boolean isFargate() {
@@ -686,6 +709,26 @@ public class ECSTaskTemplate extends AbstractDescribableImpl<ECSTaskTemplate> im
 
     public boolean isEnableExecuteCommand() {
         return enableExecuteCommand;
+    }
+
+    public int getMinIdleAgents() {
+        return minIdleAgents;
+    }
+
+    public String getMaintainSchedule() {
+        return maintainSchedule;
+    }
+
+    public boolean isScheduleActive() {
+        if (maintainSchedule == null) {
+            return true;
+        }
+        try {
+            CronTabList tabs = CronTabList.create(maintainSchedule);
+            return tabs.check(new Date());
+        } catch (ANTLRException e) {
+            return true;
+        }
     }
 
     @Override
@@ -1728,6 +1771,13 @@ public class ECSTaskTemplate extends AbstractDescribableImpl<ECSTaskTemplate> im
             return false;
         }
 
+        if (minIdleAgents != that.minIdleAgents) {
+            return false;
+        }
+        if (maintainSchedule != null ? !maintainSchedule.equals(that.maintainSchedule) : that.maintainSchedule != null) {
+            return false;
+        }
+
         return inheritFrom != null ? inheritFrom.equals(that.inheritFrom) : that.inheritFrom == null;
     }
 
@@ -1776,6 +1826,8 @@ public class ECSTaskTemplate extends AbstractDescribableImpl<ECSTaskTemplate> im
         result = 31 * result + (tags != null ? tags.hashCode() : 0);
         result = 31 * result + (inheritFrom != null ? inheritFrom.hashCode() : 0);
         result = 31 * result + (enableExecuteCommand ? 1 : 0);
+        result = 31 * result + minIdleAgents;
+        result = 31 * result + (maintainSchedule != null ? maintainSchedule.hashCode() : 0);
         return result;
     }
 }
